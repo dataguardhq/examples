@@ -1,2 +1,2 @@
 # examples
-Example code snippets
+This repository contains example code snippets for NexusData customers and users.
