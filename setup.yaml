@@ -1,0 +1,170 @@
+# Example Yaml file that will set up the example pipeline.  This creates a company, a user, sets that user
+# to admin of the company, then creates a pipeline, three tasks, edges between those tasks, and alert
+# triggers on those tasks.
+#
+# Each top level element in the file is a REST operation to be sent to the backend, with verb and path
+# specified.  For posts the payload will be converted to a JSON record and sent to the backend.
+#
+- verb: post
+  path: company/v1
+  payload:
+    name: "Acme Data"
+- verb: post
+  path: user/v1
+  payload:
+    name: "Wile E. Coyote"
+    company: "Acme Data"
+    email: "supergenius@acme.com"
+    password: "free-birdseed"
+- verb: post
+  path: company/v1
+  payload:
+    name: "Acme Data"
+    adminEmail: "supergenius@acme.com"
+- verb: post
+  path: pipeline/v1
+  payload:
+    name: "Wiki Power Editors"
+    company: "Acme Data"
+- verb: post
+  path: task/v1
+  payload:
+    name: "fetch"
+    company: "Acme Data"
+    pipelineName: "Wiki Power Editors"
+    config:
+      cols:
+        - name: editor
+          nativeType: string
+          monitored: true
+        - name: editor_id
+          nativeType: long
+          monitored: true
+        - name: page
+          nativeType: string
+          monitored: true
+        - name: timestamp
+          nativeType: datetime
+          dateFormat: "%Y-%m-%dT%H:%M:%SZ"
+          batchCol: true
+          monitored: false
+      collectionFrequency: 60000
+      recordType: json
+      batchType: INTERVAL
+      batchInterval: 30000
+      batchZeroTime: 1577836800000  # 1/1/20 00:00 GMT
+- verb: post
+  path: task/v1
+  payload:
+    name: "enrich"
+    company: "Acme Data"
+    pipelineName: "Wiki Power Editors"
+    config:
+      cols:
+        - name: editor
+          nativeType: string
+          monitored: true
+        - name: editor_id
+          nativeType: long
+          monitored: true
+        - name: page
+          nativeType: string
+          monitored: true
+        - name: timestamp
+          nativeType: datetime
+          dateFormat: "%Y-%m-%dT%H:%M:%SZ"
+          batchCol: true
+          monitored: false
+      collectionFrequency: 60000
+      recordType: json
+      batchType: INTERVAL
+      batchInterval: 30000
+      batchZeroTime: 1577836800000  # 1/1/20 00:00 GMT
+      sourceType: kafka
+      storageUrl: "kafka_server:9092"
+      storageContainer: "enriched"
+      keyDeserializerClass:  org.apache.kafka.common.serialization.StringDeserializer
+      valueDeserializerClass:  org.apache.kafka.common.serialization.StringDeserializer
+- verb: post
+  path: task/v1
+  payload:
+    name: "load"
+    company: "Acme Data"
+    pipelineName: "Wiki Power Editors"
+    config:
+      cols:
+        - name: editor
+          nativeType: varchar(50)
+          monitored: true
+        - name: editor_id
+          nativeType: int
+          monitored: true
+        - name: page
+          nativeType: varchar(255)
+          monitored: true
+        - name: created_at
+          nativeType: datetime
+          batchCol: true
+          monitored: false
+      collectionFrequency: 60000
+      recordType: jdbc
+      batchType: INTERVAL
+      batchInterval: 30000
+      batchZeroTime: 1577836800000  # 1/1/20 00:00 GMT
+      sourceType: jdbc
+      storageUrl: "jdbc:mysql://mariadbsvr:3306/wiki_db"
+      storageContainer: "power_editors"
+- verb: post
+  path: edge/v1
+  payload:
+    up:
+      name: "fetch"
+      company: "Acme Data"
+      pipelineName: "Wiki Power Editors"
+    down:
+      name: "enrich"
+      company: "Acme Data"
+      pipelineName: "Wiki Power Editors"
+- verb: post
+  path: edge/v1
+  payload:
+    up:
+      name: "enrich"
+      company: "Acme Data"
+      pipelineName: "Wiki Power Editors"
+    down:
+      name: "load"
+      company: "Acme Data"
+      pipelineName: "Wiki Power Editors"
+- verb: post
+  path: trigger/v1
+  payload:
+    companyName: "Acme Data"
+    pipelineName: "Wiki Power Editors"
+    taskName: "enrich"
+    triggerName: "enrich loss"
+    triggerText: 'when loss > 0 notify alang@nexusdatahq.com via email'
+- verb: post
+  path: trigger/v1
+  payload:
+    companyName: "Acme Data"
+    pipelineName: "Wiki Power Editors"
+    taskName: "enrich"
+    triggerName: "enrich duplicate"
+    triggerText: 'when duplicate > 0 notify "https://hooks.slack.com/services/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#alert" via slack'
+- verb: post
+  path: trigger/v1
+  payload:
+    companyName: "Acme Data"
+    pipelineName: "Wiki Power Editors"
+    taskName: "load"
+    triggerName: "load loss"
+    triggerText: 'when loss > 0 notify alang@nexusdatahq.com via email'
+- verb: post
+  path: trigger/v1
+  payload:
+    companyName: "Acme Data"
+    pipelineName: "Wiki Power Editors"
+    taskName: "load"
+    triggerName: "load duplicate"
+    triggerText: 'when duplicate > 0 notify "https://hooks.slack.com/services/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#alert" via slack'
